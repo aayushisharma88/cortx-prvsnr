@@ -1,3 +1,20 @@
+/**
+* Copyright (c) 2022 Seagate Technology LLC and/or its Affiliates
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Affero General Public License as published
+* by the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU Affero General Public License for more details.
+* You should have received a copy of the GNU Affero General Public License
+* along with this program. If not, see <https://www.gnu.org/licenses/>.
+* For any questions about this software or licensing,
+* please email opensource@seagate.com or cortx-questions@seagate.com.
+*/
+
 def remote_host() {
     hosts = "${NODE_HOST_LIST}"
     remotes = []
@@ -68,13 +85,14 @@ pipeline {
                 script {
                     remotes = remote_host()
                     sshCommand remote: remotes[0], command: """
-                        cd ${WORK_SPACE}
-                        ./destroy-cortx-cloud.sh
+                        pushd ${WORK_SPACE}
+                            ./destroy-cortx-cloud.sh
+                        popd
                     """
                 }
             }
         }
-        stage('Setup K8s Cluster'){
+        stage('Setup K8s Cluster') {
             when { expression { params.SETUP_K8s_CLUSTER } }
             steps {
                 script {
@@ -95,9 +113,10 @@ pipeline {
                     remotes = remote_host()
                     for (remote in remotes) {
                         sshCommand remote: remote, command: """
-                            cd /root
-                            rm -rf cortx-k8s
-                            git clone ${CORTX_SCRIPTS_REPO} -b ${CORTX_SCRIPTS_BRANCH}
+                            pushd /root
+                                rm -rf cortx-k8s
+                                git clone ${CORTX_SCRIPTS_REPO} -b ${CORTX_SCRIPTS_BRANCH}
+                            popd
                         """
                     }
                 }
@@ -118,7 +137,7 @@ pipeline {
         stage('Update solution.yaml') {
             steps {
                 sh label: 'Update solution.yaml', script: '''
-                    pushd ${WORKSPACE}/devops/ci
+                    pushd ${WORKSPACE}/solutions/kubernetes
                         echo $NODE_HOST_LIST | tr ' ' '\n' > hosts
                         cat hosts
                         export CONTROL_IMAGE=${CONTROL_IMAGE}
@@ -136,8 +155,9 @@ pipeline {
                 script {
                     for (remote in remotes) {
                         sshCommand remote: remote, command: """
-                            cd ${WORK_SPACE}
-                            ./prereq-deploy-cortx-cloud.sh -d /dev/sdb
+                            pushd ${WORK_SPACE}
+                                ./prereq-deploy-cortx-cloud.sh -d /dev/sdb
+                            popd
                         """
                     }
                 } 
@@ -148,8 +168,9 @@ pipeline {
             steps {
                 script {
                     sshCommand remote: remotes[0], command: """
-                        cd ${WORK_SPACE}
-                        sh deploy-cortx-cloud.sh
+                        pushd ${WORK_SPACE}
+                            sh deploy-cortx-cloud.sh
+                        popd
                     """
                 }
             }
